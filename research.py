@@ -116,8 +116,8 @@ def get_locations(from_day, to_day, line_refs, operator_refs):
     'limit': 1000000,
     'siri_routes__line_ref': line_refs,
     'siri_routes__operator_ref': operator_refs,
-    'siri_rides__schedualed_start_time_from': from_date,
-    'siri_rides__schedualed_start_time_to': to_date,
+    'siri_rides__schedualed_start_time_from': from_day,
+    'siri_rides__schedualed_start_time_to': to_day,
     'order_by': 'recorded_at_time desc'}, pre_requests_callback='print')
 
 from_date = DatePicker(description='Date:', value=datetime.date(2025,1,1))
@@ -232,43 +232,68 @@ def check_how_dist_from_start_works():
     else:
         print("One or more required columns are missing in the DataFrame.")
 
+def check_how_closest_stop_works():
+    # this function is used to prove that siri_ride_stop_id is actualy the next stop and not 
+    LINE_REF = "8177"
+    LINE_REF = "8176"
+    OPERATOR_REF = "15"
+    from_date = datetime.datetime(2025, 1, 17, 8 , 59, tzinfo=tz.gettz('Israel'))
+    to_date = datetime.datetime(2025,1, 17, 9, 15, tzinfo=tz.gettz('Israel'))
 
+    locations = get_locations(from_date, to_date, [LINE_REF], [OPERATOR_REF])
+
+    df = pd.DataFrame(locations)
+    if {'lon', 'lat', 'distance_from_journey_start', 'recorded_at_time','siri_ride_stop_id'}.issubset(df.columns):
+        # Set pandas to display all rows
+        pd.set_option('display.max_rows', None)
+        print(df[['recorded_at_time', 'lon', 'lat', 'distance_from_journey_start', 'siri_ride_stop_id']])
+
+        import matplotlib.pyplot as plt
+        import matplotlib.colors as mcolors
+
+        if {'lon', 'lat', 'siri_ride_stop_id'}.issubset(df.columns):
+            # Get unique siri_ride_stop_id values
+            unique_stop_ids = df['siri_ride_stop_id'].unique()
+
+            # Create a color map for the unique siri_ride_stop_id values
+            colormap = plt.get_cmap('tab10')
+            colors = {stop_id: colormap(i / len(unique_stop_ids)) for i, stop_id in enumerate(unique_stop_ids)}
+
+            # Plot the points
+            plt.figure(figsize=(10, 6))
+            for stop_id in unique_stop_ids:
+                stop_data = df[df['siri_ride_stop_id'] == stop_id]
+                plt.scatter(stop_data['lon'], stop_data['lat'], label=f'Stop ID: {stop_id}', color=colors[stop_id], edgecolor='k', s=50)
+            # Ensure the graph has the same scale for x and y axes
+            plt.axis('equal')
+            plt.xlabel('Longitude')
+            plt.ylabel('Latitude')
+            plt.title('Location Points Colored by siri_ride_stop_id')
+            plt.legend()
+            plt.show()
+        else:
+            print("One or more required columns are missing in the DataFrame.")
+
+
+#def get_unique_values():
+# this function is used to prove that siri_ride_stop_id is actualy the next stop and not 
 LINE_REF = "8177"
 LINE_REF = "8176"
 OPERATOR_REF = "15"
 from_date = datetime.datetime(2025, 1, 17, 8 , 59, tzinfo=tz.gettz('Israel'))
-to_date = datetime.datetime(2025,1, 17, 9, 15, tzinfo=tz.gettz('Israel'))
+to_date = datetime.datetime(2025,1, 18, 9, 15, tzinfo=tz.gettz('Israel'))
 
 locations = get_locations(from_date, to_date, [LINE_REF], [OPERATOR_REF])
 
 df = pd.DataFrame(locations)
-if {'lon', 'lat', 'distance_from_journey_start', 'recorded_at_time','siri_ride_stop_id'}.issubset(df.columns):
-    # Set pandas to display all rows
-    pd.set_option('display.max_rows', None)
-    print(df[['recorded_at_time', 'lon', 'lat', 'distance_from_journey_start', 'siri_ride_stop_id']])
 
-    import matplotlib.pyplot as plt
-    import matplotlib.colors as mcolors
+# Print unique values for each column in the DataFrame
+for column in df.columns:
+    unique_values = df[column].unique()
+    print(f"Column: {column}")
+    print(f"Unique Values ({len(unique_values)}): {unique_values}")
+    print("-" * 50)
 
-    if {'lon', 'lat', 'siri_ride_stop_id'}.issubset(df.columns):
-        # Get unique siri_ride_stop_id values
-        unique_stop_ids = df['siri_ride_stop_id'].unique()
-
-        # Create a color map for the unique siri_ride_stop_id values
-        colormap = plt.get_cmap('tab10')
-        colors = {stop_id: colormap(i / len(unique_stop_ids)) for i, stop_id in enumerate(unique_stop_ids)}
-
-        # Plot the points
-        plt.figure(figsize=(10, 6))
-        for stop_id in unique_stop_ids:
-            stop_data = df[df['siri_ride_stop_id'] == stop_id]
-            plt.scatter(stop_data['lon'], stop_data['lat'], label=f'Stop ID: {stop_id}', color=colors[stop_id], edgecolor='k', s=50)
-        # Ensure the graph has the same scale for x and y axes
-        plt.axis('equal')
-        plt.xlabel('Longitude')
-        plt.ylabel('Latitude')
-        plt.title('Location Points Colored by siri_ride_stop_id')
-        plt.legend()
-        plt.show()
-    else:
-        print("One or more required columns are missing in the DataFrame.")
+#check_how_dist_from_start_works()
+#check_how_closest_stop_works()
+# get_unique_values()
