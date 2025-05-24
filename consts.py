@@ -9,6 +9,9 @@ SiriStopId = NewType("SiriStopId", int)
 LocationId = NewType("LocationId", int)
 SiriStopCode = NewType("SiriStopCode", int)
 
+Longtitude = NewType("Longtitude", float)
+Latitute = NewType("Latitute", float)
+
 K = 5
 
 START_HOUR = 7
