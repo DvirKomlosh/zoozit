@@ -1,5 +1,5 @@
 import time
-from typing import List
+from typing import List, Optional
 import pandas as pd
 from api_functions import (
     get_locations,
@@ -99,7 +99,8 @@ def generate_data(
                 "start_time",
                 "siri_stop_id",
                 "siri_ride_stop_id",
-                "arrival_time",
+                "arrival_time0",
+                "arrival_time1",
             ]
         )
         siri_ride_ids = get_relevant_siri_ride_ids(
@@ -116,7 +117,7 @@ def generate_data(
 
             for stop_ids, arrival_time in arrival_times.items():
                 siri_stop_id, siri_ride_stop_id = int(stop_ids[0]), int(stop_ids[1])
-                arrival_time = arrival_time.astimezone(tz.gettz("Israel")).time()
+                arrival_time = [a.astimezone(tz.gettz("Israel")).time() for a in arrival_time]
 
                 results_df = pd.concat(
                     [
@@ -130,7 +131,8 @@ def generate_data(
                                     "start_time": start_time,
                                     "siri_ride_stop_id": siri_ride_stop_id,
                                     "siri_stop_id": siri_stop_id,
-                                    "arrival_time": arrival_time,
+                                    "arrival_time0": arrival_time[0],
+                                    "arrival_time1": arrival_time[1],
                                 }
                             ]
                         ),
@@ -145,7 +147,7 @@ def generate_data(
 
 def find_id_of_closest_to_stop(
     loc_df: pd.DataFrame, siri_ride_stop_id: SiriRideStopId
-) -> LocationId:
+) -> Optional[LocationId]:
     """
     gets the location id of the closest location to the given siri_ride_stop_id.
     """
@@ -157,10 +159,19 @@ def find_id_of_closest_to_stop(
         return max_distance_row["id"]
     return None
 
+def find_id_of_next_entry(loc_df: pd.DataFrame,entry_id: LocationId) -> Optional[LocationId]:
+    """
+    gets the location id of the next entry after the given entry_id.
+    """
+    entry_recorded_at_time = loc_df[loc_df["id"] == entry_id]["recorded_at_time"].iloc[0]
+    filtered_df = loc_df[loc_df["recorded_at_time"] > entry_recorded_at_time]
+    if not filtered_df.empty:
+        return filtered_df.loc[filtered_df["recorded_at_time"].idxmin()]["id"]
+    return None
 
 def get_arrival_times(
     ids: List[SiriRideId],
-) -> dict[tuple[SiriStopId, SiriRideStopId], datetime.datetime]:
+) -> dict[tuple[SiriStopId, SiriRideStopId], tuple[datetime.datetime, datetime.datetime]]:
     """
     return a dict stop : arrival time for that id
     based on the locations of the ride.
@@ -177,9 +188,13 @@ def get_arrival_times(
         entry_id = find_id_of_closest_to_stop(loc_df, siri_ride_stop_id)
         siri_stop_id = get_stop_id(siri_ride_stop_id)
         if entry_id is not None:
-            times[(siri_stop_id, siri_ride_stop_id)] = loc_df[loc_df["id"] == entry_id][
-                "recorded_at_time"
-            ].iloc[0]
+            next_entry_id = find_id_of_next_entry(loc_df, entry_id)
+            if next_entry_id is not None:
+                times[(siri_stop_id, siri_ride_stop_id)] = tuple(
+                    [loc_df[loc_df["id"] == _id]["recorded_at_time"].iloc[0] for _id in [entry_id, next_entry_id]]
+                )
+            
+            
     return times
 
 
