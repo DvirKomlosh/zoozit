@@ -7,6 +7,7 @@ SiriRideId = NewType("SiriRideId", int)
 SiriRideStopId = NewType("SiriRideStopId", int)
 SiriStopId = NewType("SiriStopId", int)
 LocationId = NewType("LocationId", int)
+SiriStopCode = NewType("SiriStopCode", int)
 
 K = 5
 
