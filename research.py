@@ -16,7 +16,6 @@ import stride
 TO_CINEMA = "29094"
 
 METROPOLIN_REF = "15"
-IL_TIME = datetime.timezone(datetime.timedelta(hours=3))
 
 
 def get_scheduled_rides(from_day, to_day, route_short_name):
