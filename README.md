@@ -18,7 +18,9 @@ you'll need an internet connection to use the API.
 ## for developers:
 
 to use open-bus-stride-client well you might need to use some resources:
+
 read the [API docs](https://open-bus-stride-api.hasadna.org.il/docs#) to learn what API calls are available
+
 use the [data model](https://github.com/hasadna/open-bus-stride-db/blob/main/DATA_MODEL.md) to learn what each data type includes, and how to get from one data type to another.
 
 
