@@ -150,17 +150,18 @@ def run_knn(locations, arrival_dict, recorded_at_time, lon, lat):
     sorted = sort_locations(locations, lon, lat, recorded_at_time)
     k = min(K, len(sorted))
     sorted = sorted.iloc[:k]
-    distance_sum = sorted["distance"].sum()
-
     sorted["arrival_time"] = sorted["siri_ride_stop_id"].map(arrival_dict)
     sorted["time_to_arrive"] = sorted.apply(calculate_time_to_arrive, axis=1)
 
-    if distance_sum == 0:
-        # All locations are the same, returning the first arrival time:
-        return sorted.iloc[0]["time_to_arrive"]
+    if (sorted["distance"] == 0).any():
+        return sorted.loc[sorted["distance"] == 0, "time_to_arrive"].iloc[0]
 
-    weighted_sum = (sorted["distance"] * sorted["time_to_arrive"]).sum()
-    astimated_seconds_to_arrive = weighted_sum / distance_sum
+    sorted["inverse_distance"] = 1 / sorted["distance"]
+
+    inverse_distance_sum = sorted["inverse_distance"].sum()
+
+    weighted_sum = (sorted["inverse_distance"] * sorted["time_to_arrive"]).sum()
+    astimated_seconds_to_arrive = weighted_sum / inverse_distance_sum
 
     return astimated_seconds_to_arrive
 
@@ -171,6 +172,10 @@ def main():
     recorded_at_time_str = "08:20:00"
     lon = 34.845816
     lat = 32.134732
+
+    lon = 34.846114
+    lat = 32.134802
+
     start_time = datetime.strptime(f"{date_str} {time_str}", "%Y-%m-%d %H:%M:%S")
     recorded_at_time = datetime.strptime(
         f"{date_str} {recorded_at_time_str}", "%Y-%m-%d %H:%M:%S"
