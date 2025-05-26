@@ -1,6 +1,4 @@
 from typing import Dict, List, Tuple
-
-import numpy
 from api_functions import get_locations_for_kmenas
 import pandas as pd
 from datetime import datetime
