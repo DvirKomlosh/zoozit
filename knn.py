@@ -1,4 +1,6 @@
 from typing import Dict, List, Tuple
+
+import numpy
 from api_functions import get_locations_for_kmenas
 import pandas as pd
 from datetime import datetime
@@ -27,6 +29,7 @@ def next_stop_eta(
     next_stop_id: SiriStopId,
     line_ref: LineRef,
     operator_ref: OperatorRef,
+    k=K,
 ) -> int:
     """
     knn implementation to get the ETA for the next stop
@@ -35,7 +38,7 @@ def next_stop_eta(
     locations, arrival_dict = get_relavent_locations(
         start_time, next_stop_id, line_ref, operator_ref
     )
-    seconds_to_arrive = run_knn(locations, arrival_dict, recorded_at_time, lon, lat)
+    seconds_to_arrive = run_knn(locations, arrival_dict, recorded_at_time, lon, lat, k)
     return seconds_to_arrive
 
 
@@ -55,6 +58,10 @@ def get_relavent_locations(
     location_ids, siri_ride_stop_ids, arrival_dict = get_relavent_ids(
         start_time, next_stop_id
     )
+    if len(location_ids) == 0 or len(siri_ride_stop_ids) == 0:
+        raise Exception(
+            "no valid precalculated arrival time found for the given parameters. can't estimate"
+        )
     locations = get_locations_for_kmenas(
         location_ids, siri_ride_stop_ids, line_ref, operator_ref
     )
@@ -76,7 +83,7 @@ def get_relavent_ids(
     filtered_data = data[
         (data["start_time"] == start_hour)
         & (data["day_of_week"] == day_of_week)
-        & (data["siri_stop_id"] == next_stop_id)
+        & ((data["siri_stop_id"]) == next_stop_id)
     ]
 
     location_ids = list(set(filtered_data["id"].tolist()))
@@ -94,7 +101,7 @@ def get_arrival_data():
     this is a placeholder.
     """
     file_path = (
-        "2025-01-01-2025-01-31,REF29094.csv"  # Update this path to your actual CSV file
+        "2025-01-01-2025-04-30,REF29094.csv"  # Update this path to your actual CSV file
     )
     return pd.read_csv(file_path)
 
@@ -142,13 +149,14 @@ def calculate_time_to_arrive(location) -> int:
     return seconds_to_arrive
 
 
-def run_knn(locations, arrival_dict, recorded_at_time, lon, lat):
+def run_knn(locations, arrival_dict, recorded_at_time, lon, lat, k):
     """
     finds the K nearest neighbors to the given lon, lat, recorded_at_time,
     and returns the estimated seconds to arrive at the next stop.
     """
     sorted = sort_locations(locations, lon, lat, recorded_at_time)
-    k = min(K, len(sorted))
+    k = min(k, len(sorted))
+
     sorted = sorted.iloc[:k]
     sorted["arrival_time"] = sorted["siri_ride_stop_id"].map(arrival_dict)
     sorted["time_to_arrive"] = sorted.apply(calculate_time_to_arrive, axis=1)
@@ -162,6 +170,9 @@ def run_knn(locations, arrival_dict, recorded_at_time, lon, lat):
 
     weighted_sum = (sorted["inverse_distance"] * sorted["time_to_arrive"]).sum()
     astimated_seconds_to_arrive = weighted_sum / inverse_distance_sum
+
+    if astimated_seconds_to_arrive == 0:
+        print(sorted)
 
     return astimated_seconds_to_arrive
 
