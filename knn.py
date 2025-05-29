@@ -220,9 +220,6 @@ def print_etas(arrival_times: Dict[SiriStopId, int], recorded_at_time: datetime)
 
 
 def main():
-    lon = 34.845816
-    lat = 32.134732
-
     lon = 34.846114
     lat = 32.134802
 
@@ -246,30 +243,7 @@ def main():
         OPERATOR_REFS["METROPOLIN"],
     )
     print_etas(times, recorded_at_time)
-    print("-" * 50)
-    print("-" * 50)
-    print("-" * 50)
-
-    time_str = "10:45:00"
-    recorded_at_time_str = "10:50:00"
-    date_str = "2024-01-01"
-    start_time = datetime.strptime(f"{date_str} {time_str}", "%Y-%m-%d %H:%M:%S")
-    recorded_at_time = datetime.strptime(
-        f"{date_str} {recorded_at_time_str}", "%Y-%m-%d %H:%M:%S"
-    )
-
-    times = next_stops_eta(
-        recorded_at_time,
-        lon,
-        lat,
-        start_time,
-        next_stop_id,
-        LINE_REFS["8_to_cinema"],
-        OPERATOR_REFS["METROPOLIN"],
-    )
-    print_etas(times, recorded_at_time)
-
-    print("calculation time:", time.time() - start)
+    print("Calculation time:", time.time() - start)
     return
 
 
