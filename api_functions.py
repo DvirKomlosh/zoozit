@@ -1,5 +1,5 @@
 import datetime
-from typing import Dict, List, Union
+from typing import Dict, List, Tuple, Union
 import stride
 
 pre_requests_callback = "print"
@@ -13,6 +13,8 @@ from consts import (
     SiriRideStopId,
     SiriStopId,
     SiriStopCode,
+    Longtitude,
+    Latitute,
 )
 
 
@@ -97,3 +99,13 @@ def get_stop_name(stop_id: SiriStopId) -> SiriStopCode:
     return stride.get(
         "/siri_stops/get", {"id": stop_id}, pre_requests_callback=pre_requests_callback
     )["code"]
+
+
+def get_stop_position(code: int) -> Tuple[Longtitude, Latitute]:
+    gtfs_stop = stride.get(
+        "/gtfs_stops/list",
+        {"code": code, "limit": 1},
+        pre_requests_callback=pre_requests_callback,
+    )
+    gtfs_stop = gtfs_stop[0]
+    return gtfs_stop["lon"], gtfs_stop["lat"]
