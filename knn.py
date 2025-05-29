@@ -8,6 +8,8 @@ from consts import (
     K,
     LINE_REFS,
     OPERATOR_REFS,
+    SIRI_STOP_ORDER,
+    SIRI_STOPS_TO_NAME,
     Latitute,
     LineRef,
     LocationId,
@@ -17,6 +19,9 @@ from consts import (
     SiriStopId,
 )
 import time
+
+from get_data import get_arrival_data
+from stop_to_stop import generate_time_diffs
 
 
 def next_stop_eta(
@@ -93,17 +98,6 @@ def get_relavent_ids(
     return location_ids, siri_ride_stop_ids, arrival_dict
 
 
-def get_arrival_data():
-    """
-    return a dataframe of arrival data returned by the "generate_data" function.
-    this is a placeholder.
-    """
-    file_path = (
-        "2025-01-01-2025-04-30,REF29094.csv"  # Update this path to your actual CSV file
-    )
-    return pd.read_csv(file_path)
-
-
 def calculate_distance(
     location, lon: Longtitude, lat: Latitute, recorded_at_time: datetime
 ) -> float:
@@ -175,16 +169,66 @@ def run_knn(locations, arrival_dict, recorded_at_time, lon, lat, k):
     return astimated_seconds_to_arrive
 
 
+def next_stops_eta(
+    recorded_at_time: datetime,
+    lon: Longtitude,
+    lat: Latitute,
+    start_time: datetime,
+    next_stop_id: SiriStopId,
+    line_ref: LineRef,
+    operator_ref: OperatorRef,
+    k=K,
+) -> Dict[SiriStopId, int]:
+    """
+    uses knn to get the ETAs for the next stop, and uses averages of past data to determine the next stops' ETAs.
+    """
+    seconds_to_arrive = next_stop_eta(
+        recorded_at_time,
+        lon,
+        lat,
+        start_time,
+        next_stop_id,
+        line_ref,
+        operator_ref,
+        k,
+    )
+    seconds_to_arrive = int(seconds_to_arrive)  # add 1 second to avoid rounding issues
+    stop_index = SIRI_STOP_ORDER.index(next_stop_id)
+    next_stops = SIRI_STOP_ORDER[stop_index + 1 :]
+    stop_to_stop_times = generate_time_diffs(start_time)
+
+    arrival_times = dict()
+    arrival_times[next_stop_id] = seconds_to_arrive
+    last_stop = next_stop_id
+    for stop in next_stops:
+        arrival_times[stop] = arrival_times[last_stop] + stop_to_stop_times[stop]
+        last_stop = stop
+
+    return arrival_times
+
+
+def print_etas(arrival_times: Dict[SiriStopId, int], recorded_at_time: datetime):
+    """
+    prints the estimated times of arrival for each stop in a readable format.
+    """
+    for stop, seconds in arrival_times.items():
+        arrival_time = recorded_at_time + pd.to_timedelta(seconds, unit="s")
+        stop_name = SIRI_STOPS_TO_NAME[stop]
+        print(
+            f"Stop {stop_name[::-1]} will be reached in {seconds} seconds, at {arrival_time.time()}"
+        )
+
+
 def main():
-    date_str = "2024-01-02"
-    time_str = "08:15:00"
-    recorded_at_time_str = "08:20:00"
     lon = 34.845816
     lat = 32.134732
 
     lon = 34.846114
     lat = 32.134802
 
+    time_str = "08:15:00"
+    recorded_at_time_str = "08:20:00"
+    date_str = "2024-01-01"
     start_time = datetime.strptime(f"{date_str} {time_str}", "%Y-%m-%d %H:%M:%S")
     recorded_at_time = datetime.strptime(
         f"{date_str} {recorded_at_time_str}", "%Y-%m-%d %H:%M:%S"
@@ -192,7 +236,7 @@ def main():
     next_stop_id = 2391
 
     start = time.time()
-    seconds = next_stop_eta(
+    times = next_stops_eta(
         recorded_at_time,
         lon,
         lat,
@@ -201,8 +245,30 @@ def main():
         LINE_REFS["8_to_cinema"],
         OPERATOR_REFS["METROPOLIN"],
     )
-    arrival_time = recorded_at_time + pd.to_timedelta(seconds, unit="s")
-    print(f"The vehicle will arrive in: {seconds} seconds, at {arrival_time.time()}")
+    print_etas(times, recorded_at_time)
+    print("-" * 50)
+    print("-" * 50)
+    print("-" * 50)
+
+    time_str = "10:45:00"
+    recorded_at_time_str = "10:50:00"
+    date_str = "2024-01-01"
+    start_time = datetime.strptime(f"{date_str} {time_str}", "%Y-%m-%d %H:%M:%S")
+    recorded_at_time = datetime.strptime(
+        f"{date_str} {recorded_at_time_str}", "%Y-%m-%d %H:%M:%S"
+    )
+
+    times = next_stops_eta(
+        recorded_at_time,
+        lon,
+        lat,
+        start_time,
+        next_stop_id,
+        LINE_REFS["8_to_cinema"],
+        OPERATOR_REFS["METROPOLIN"],
+    )
+    print_etas(times, recorded_at_time)
+
     print("calculation time:", time.time() - start)
     return
 
